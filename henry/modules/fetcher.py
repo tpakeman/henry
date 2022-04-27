@@ -1,3 +1,4 @@
+from asyncio import as_completed
 import csv
 import datetime
 import json
@@ -21,6 +22,8 @@ from looker_sdk import error
 from looker_sdk.rtl import api_settings, auth_session, requests_transport, serialize
 from looker_sdk.sdk.api40 import methods, models
 
+from concurrent.futures import ThreadPoolExecutor, thread
+
 from henry.modules import exceptions
 
 from .. import __version__ as pkg
@@ -33,6 +36,7 @@ class Fetcher:
         self.min_queries = options.min_queries or 0
         self.limit = options.limit[0] if options.limit else None
         self.sortkey = options.sortkey
+        self.threads = options.threads
         cmd = options.command
         sub_cmd = options.subcommand or None
         self.cmd = f"{cmd}_{sub_cmd}" if sub_cmd else cmd
@@ -148,15 +152,17 @@ class Fetcher:
             elif not explore:
                 all_models = self.get_models(model=model)
                 explores = []
-                for m in all_models:
-                    assert isinstance(m.name, str)
-                    assert isinstance(m.explores, list)
-                    explores.extend(
-                        [
-                            self.sdk.lookml_model_explore(m.name, cast(str, e.name))
-                            for e in m.explores
-                        ]
-                    )
+                results = []
+                with ThreadPoolExecutor(max_workers=self.threads) as pool:
+                    for m in all_models:
+                        assert isinstance(m.name, str)
+                        assert isinstance(m.explores, list)
+                        for e in m.explores:
+                            explore_name = cast(str, e.name)
+                            r = pool.submit(
+                                self.sdk.lookml_model_explore, m.name, explore_name)
+                            results.append(r)
+                explores = [r.result() for r in results]
         except error.SDKError:
             raise exceptions.NotFoundError(
                 "An error occured while getting models/explores."
@@ -195,11 +201,14 @@ class Fetcher:
         """Returns a list of explores that do not meet the min query count requirement
         for the specified timeframe.
         """
-        _all = self.get_explores(model=model)
-        used = self.get_used_explores(model=model)
-        # Keep only explores that satisfy the min_query requirement
-        used = self._filter(data=used, condition=lambda x: x[1] >= self.min_queries)
-        unused_explores = [e.name for e in _all if e.name not in used.keys()]
+        with ThreadPoolExecutor(max_workers=self.threads) as pool:
+            _all = pool.submit(self.get_explores, model=model, explore=None)
+            used = pool.submit(self.get_used_explores, model=model)
+            # Keep only explores that satisfy the min_query requirement
+        used = self._filter(data=used.result(),
+                            condition=lambda x: x[1] >= self.min_queries)
+        unused_explores = [
+            e.name for e in _all.result() if e.name not in used.keys()]
         return unused_explores
 
     def get_explore_fields(self, explore: models.LookmlModelExplore) -> Sequence[str]:
@@ -278,12 +287,12 @@ class Fetcher:
         """
         assert isinstance(explore.model_name, str)
         assert isinstance(explore.name, str)
-        all_fields = self.get_explore_fields(explore=explore)
-        field_stats = self.get_used_explore_fields(
-            model=explore.model_name, explore=explore.name
-        )
-
-        for field in all_fields:
+        with ThreadPoolExecutor(max_workers=self.threads) as pool:
+            all_fields = pool.submit(self.get_explore_fields, explore=explore)
+            field_stats_result = pool.submit(
+                self.get_used_explore_fields, model=explore.model_name, explore=explore.name)
+        field_stats = field_stats_result.result()
+        for field in all_fields.result():
             if not field_stats.get(field):
                 field_stats[field] = 0
 
@@ -317,12 +326,20 @@ class Fetcher:
         self.sdk.update_session(models.WriteApiSession(workspace_id="dev"))
         supported_tests = self.sdk.all_git_connection_tests(project_id)
         results = []
-        for test in supported_tests:
-            assert isinstance(test.id, str)
-            resp = self.sdk.run_git_connection_test(project_id, test.id)
-            results.append(resp)
-            if resp.status != "pass":
-                break
+        with ThreadPoolExecutor(max_workers=self.threads) as pool:
+            for test in supported_tests:
+                assert isinstance(test.id, str)
+                resp = pool.submit(
+                    self.sdk.run_git_connection_test, project_id, test.id)
+                results.append(resp)
+            while True:
+                if all(r.done() for r in results):
+                    break
+                if any(r.result().status != "pass" for r in results if r.done()):
+                    pool._threads.clear()
+                    thread._threads_queues.clear()
+                    break
+        results = [r.result() for r in results if not r.cancelled()]
         self.sdk.update_session(models.WriteApiSession(workspace_id="production"))
         errors = list(filter(lambda r: r.status != "pass", results))
         formatted_results = [f"{r.id} ({r.status})" for r in results]
@@ -421,3 +438,4 @@ class Input(NamedTuple):
     quiet: bool = False
     save: Optional[bool] = False
     timeout: Optional[int] = 120
+    threads: Optional[int] = 15

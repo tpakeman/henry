@@ -27,6 +27,7 @@ class Analyze(fetcher.Fetcher):
         """Analyzes all projects or a specific project."""
         projects = self.get_projects(project_id=id)
         result: List[Any] = []
+        # TODO: threading
         for p in projects:
             assert isinstance(p.name, str)
             assert isinstance(p.pull_request_mode, models.PullRequestMode)
@@ -59,6 +60,7 @@ class Analyze(fetcher.Fetcher):
         """Analyze models, can optionally filter by project or model."""
         all_models = self.get_models(project=project, model=model)
         result: fetcher.TResult = []
+        # TODO: threading
         for m in all_models:
             assert isinstance(m.name, str)
             assert isinstance(m.project_name, str)
@@ -81,6 +83,7 @@ class Analyze(fetcher.Fetcher):
         """Analyze explores."""
         all_explores = self.get_explores(model=model, explore=explore)
         result: fetcher.TResult = []
+        # TODO: threading
         for e in all_explores:
             assert isinstance(e.name, str)
             assert isinstance(e.model_name, str)

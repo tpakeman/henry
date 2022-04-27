@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from typing import cast, Optional
 
 from henry.modules import fetcher
@@ -20,6 +21,7 @@ class Vacuum(fetcher.Fetcher):
         all_models = self.get_models(project=project, model=model)
         used_models = self.get_used_models()
         result: fetcher.TResult = []
+        # TODO: threading
         for m in all_models:
             assert isinstance(m.name, str)
             result.append(
@@ -40,11 +42,13 @@ class Vacuum(fetcher.Fetcher):
         """Analyze explores"""
         explores = self.get_explores(model=model, explore=explore)
         result: fetcher.TResult = []
+        # TODO: threading
         for e in explores:
             assert isinstance(e.name, str)
             assert isinstance(e.model_name, str)
             field_stats = self.get_explore_field_stats(e)
-            join_stats = self.get_explore_join_stats(explore=e, field_stats=field_stats)
+            join_stats = self.get_explore_join_stats(
+                explore=e, field_stats=field_stats)
             result.append(
                 {
                     "Model": e.model_name,
@@ -53,4 +57,21 @@ class Vacuum(fetcher.Fetcher):
                     "Unused Fields": "\n".join(sorted(self._filter(field_stats))),
                 }
             )
+        # with ThreadPoolExecutor(min_workers=self.threads) as pool:
+        #   pending_results = []
+        #   for e in explores:
+        #       assert isinstance(e.name, str)
+        #       assert isinstance(e.model_name, str)
+        #       field_stats = pool.submit(self.get_explore_field_stats, e)
+        #       join_stats = pool.submit(self.get_explore_join_stats, explore=e, field_stats=field_stats)
+        #       pending_results.append()
+        #       result.append(
+        #           {
+        #               "Model": e.model_name,
+        #               "Explore": e.name,
+        #               "Unused Joins": "\n".join(sorted(self._filter(join_stats).keys())),
+        #               "Unused Fields": "\n".join(sorted(self._filter(field_stats))),
+        #           }
+        #       )
+        # result = [{} for r in pending_results]
         return result

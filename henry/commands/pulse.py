@@ -13,6 +13,7 @@ class Pulse(fetcher.Fetcher):
     overall health.
     """
 
+    # TODO: threading
     @classmethod
     def run(cls, user_input: fetcher.Input):
         pulse = cls(user_input)
@@ -38,6 +39,7 @@ class Pulse(fetcher.Fetcher):
             raise exceptions.NotFoundError("No connections found.")
 
         formatted_results = []
+        # TODO: threading
         for connection in db_connections:
             assert connection.dialect
             assert isinstance(connection.name, str)
