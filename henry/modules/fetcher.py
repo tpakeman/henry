@@ -19,14 +19,13 @@ from typing import (
 import tabulate
 from looker_sdk import error
 from looker_sdk.rtl import api_settings, auth_session, requests_transport, serialize
-from looker_sdk.sdk import methods, models
+from looker_sdk.sdk.api40 import methods, models
 
 from henry.modules import exceptions
 
 from .. import __version__ as pkg
 
 TResult = MutableSequence[Dict[str, Union[str, int, bool]]]
-
 
 class Fetcher:
     def __init__(self, options: "Input"):
@@ -46,11 +45,12 @@ class Fetcher:
 
     def configure_sdk(
         self, config_file: str, section: str, timeout: Optional[int],
-    ) -> methods.LookerSDK:
+    ) -> methods.Looker40SDK:
         """Instantiates and returns a LookerSDK object and overrides default timeout if
         specified by user.
         """
-        settings = api_settings.ApiSettings.configure(config_file, section)
+        settings = api_settings.ApiSettings(
+            filename=config_file, section=section)
         user_agent_tag = f"Henry v{pkg.__version__}: cmd={self.cmd}, sid={uuid.uuid1()}"
         settings.headers = {
             "Content-Type": "application/json",
@@ -58,13 +58,15 @@ class Fetcher:
         }
         if timeout:
             settings.timeout = timeout
-        settings.api_version = "3.1"
         transport = requests_transport.RequestsTransport.configure(settings)
-        return methods.LookerSDK(
-            auth_session.AuthSession(settings, transport, serialize.deserialize),
-            serialize.deserialize,
-            serialize.serialize,
+        # 4.0 is hardcoded here due to needing the -40 suffixed methods
+        return methods.Looker40SDK(
+            auth_session.AuthSession(
+                settings, transport, serialize.deserialize40, "4.0"),
+            serialize.deserialize40,
+            serialize.serialize40,
             transport,
+            "4.0",
         )
 
     def _verify_api_credentials(self):
@@ -80,7 +82,8 @@ class Fetcher:
         """Returns a list of projects."""
         try:
             if project_id:
-                projects = [self.sdk.project(project_id)]
+                projects: Sequence[models.Project] = [
+                    self.sdk.project(project_id)]
             else:
                 projects = self.sdk.all_projects()
         except error.SDKError:
@@ -96,7 +99,8 @@ class Fetcher:
             self.get_projects(project)
         try:
             if model:
-                ml = [self.sdk.lookml_model(model)]
+                ml: Sequence[models.LookmlModel] = [
+                    self.sdk.lookml_model(model)]
             else:
                 ml = self.sdk.all_lookml_models()
         except error.SDKError:

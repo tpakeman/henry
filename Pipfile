@@ -13,13 +13,11 @@ pytest-cov = "*"
 ptipython = "*"
 pyyaml = "*"
 twine = "*"
+autopep8 = "*"
 
 [packages]
-looker-sdk = "===0.1.3b7"
+looker-sdk = ">=21"
 tabulate = "*"
-
-[requires]
-python_version = "3.7"
 
 [pipenv]
 allow_prereleases = true
