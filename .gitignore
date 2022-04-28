@@ -1,6 +1,10 @@
 # Looker Credentials
 looker.ini
+
+# Other system + build files
 .vscode
+pyproject.toml
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

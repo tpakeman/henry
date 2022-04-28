@@ -22,13 +22,13 @@ from looker_sdk import error
 from looker_sdk.rtl import api_settings, auth_session, requests_transport, serialize
 from looker_sdk.sdk.api40 import methods, models
 
-from concurrent.futures import ThreadPoolExecutor, thread
+from concurrent.futures import Future, ThreadPoolExecutor, thread
 
 from henry.modules import exceptions
 
 from .. import __version__ as pkg
 
-TResult = MutableSequence[Dict[str, Union[str, int, bool]]]
+TResult = MutableSequence[Dict[str, Union[str, int, bool, Future]]]
 
 class Fetcher:
     def __init__(self, options: "Input"):
@@ -438,4 +438,4 @@ class Input(NamedTuple):
     quiet: bool = False
     save: Optional[bool] = False
     timeout: Optional[int] = 120
-    threads: Optional[int] = 15
+    threads: Optional[int] = 8

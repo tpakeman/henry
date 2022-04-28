@@ -6,7 +6,6 @@ import sys
 import henry
 from henry.commands import analyze, pulse, vacuum
 from henry.modules import fetcher
-from datetime import datetime as dt
 
 
 def main():
@@ -229,7 +228,7 @@ def add_common_arguments(parser: argparse.ArgumentParser):
     parser.add_argument("-q", "--quiet", action="store_true", help="Silence output")
     parser.add_argument("--timeout", type=int, default=120,
                         help=argparse.SUPPRESS)
-    parser.add_argument("--threads", type=int, default=15,
+    parser.add_argument("--threads", type=int, default=8,
                         help=argparse.SUPPRESS)
     parser.add_argument_group("Authentication")
     parser.add_argument(
@@ -242,48 +241,5 @@ def parse_input(parser: argparse.ArgumentParser):
     args = vars(parser.parse_args())
     return fetcher.Input(**args)
 
-
-# TODO: DELETE!
-def time(fn):
-    def inner(*args, **kwargs):
-        s = dt.now()
-        r = fn(*args, **kwargs)
-        e = dt.now()
-        t = (e - s).total_seconds()
-        print(
-            f'{fn.__name__} completed in {t:.2f} seconds with {args[0]} thread(s)')
-        return r
-    return inner
-
-
-def custom_init(parser: argparse.ArgumentParser, threads):
-    args = dict(vars(parser.parse_args()))
-    args['threads'] = threads
-    return fetcher.Input(**args)
-
-
-@time
-def thread_test(n):
-    parser = setup_cli()
-    user_input = custom_init(parser, n)
-    if user_input.command == "pulse":
-        pulse.Pulse.run(user_input)
-    elif user_input.command == "analyze":
-        analyze.Analyze.run(user_input)
-    elif user_input.command == "vacuum":
-        vacuum.Vacuum.run(user_input)
-    else:
-        parser.error()
-
-
-def test_threading(vals):
-    for v in vals:
-        thread_test(v)
-
-
-
 if __name__ == "__main__":
-    # main()
-    test_threading([10, 1])
-    ## TO DO - test all in a range, multiple times, produce min, max, mean, median figs for each
-    # test_threading(range(1,16))
+    main()
