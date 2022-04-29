@@ -1,10 +1,9 @@
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 import json
 from textwrap import fill
-from typing import Sequence, cast
+from typing import List, Sequence, cast
 
 from looker_sdk import models
-from pytest import fail
 
 from henry.modules import exceptions, fetcher, spinner
 
@@ -41,8 +40,8 @@ class Pulse(fetcher.Fetcher):
             raise exceptions.NotFoundError("No connections found.")
 
         formatted_results = []
+        futures: List[Future] = []
         with ThreadPoolExecutor(max_workers=self.threads) as pool:
-            pending_results = []
             for connection in db_connections:
                 assert connection.dialect
                 assert isinstance(connection.name, str)
@@ -59,16 +58,16 @@ class Pulse(fetcher.Fetcher):
                                           limit="1",
                                       ),
                                       )
-                pending_results.extend((conn_test, queries))
+                futures.extend((conn_test, queries))
                 formatted_results.append({
                     "Connection": connection.name,
                     "Status": conn_test,
                     "Query Count": queries,
                 })
 
-                while True:
-                    if all([r.done() for r in pending_results]):
-                        break
+            while True:
+                if all([f.done() for f in futures]):
+                    break
         for result in formatted_results:
             conn_results = list(filter(lambda r: r.status
                                 == "error", result['Status'].result()))
