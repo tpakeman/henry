@@ -18,7 +18,7 @@ class Vacuum(fetcher.Fetcher):
         vacuum.output(data=cast(fetcher.TResult, result))
 
     @spinner.Spinner()
-    def models(self, *, project: Optional[str] = None, model: Optional[str]) -> fetcher.TResult:
+    def models(self, *, project: Optional[str] = None, model: str) -> fetcher.TResult:
         """Analyze models."""
         result: fetcher.TResult = []
         futures: List[Any] = []

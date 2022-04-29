@@ -27,10 +27,8 @@ class Pulse(fetcher.Fetcher):
                 pulse._tabularize_and_print(result['result'])
 
     def check_db_connections(self):
-        """Gets all db connections and runs all supported tests against them.
-        """
-        reserved_names = ["looker__internal__analytics",
-                          "looker", "looker__ilooker"]
+        """Gets all db connections and runs all supported tests against them."""
+        reserved_names = ["looker__internal__analytics", "looker", "looker__ilooker"]
         db_connections: Sequence[models.DBConnection] = list(
             filter(lambda c: c.name not in reserved_names,
                    self.sdk.all_connections())
@@ -71,8 +69,7 @@ class Pulse(fetcher.Fetcher):
         for result in formatted_results:
             conn_results = list(filter(lambda r: r.status
                                 == "error", result['Status'].result()))
-            conn_errors = [
-                f"- {fill(cast(str, e.message), width=100)}" for e in conn_results]
+            conn_errors = [f"- {fill(cast(str, e.message), width=100)}" for e in conn_results]
             result['Status'] = "OK" if not conn_errors else "\n".join(
                 conn_errors)
             query_run_count = json.loads(result['Query Count'].result())[
