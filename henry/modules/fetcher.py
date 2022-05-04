@@ -83,7 +83,7 @@ class Fetcher:
         try:
             if project_id:
                 projects: Sequence[models.Project] = [
-                    self.sdk.project(project_id)]
+                    self.sdk.project(project_id,fields='name,pull_request_mode,validation_required,type')]
             else:
                 projects = self.sdk.all_projects()
         except error.SDKError:
@@ -100,9 +100,9 @@ class Fetcher:
         try:
             if model:
                 ml: Sequence[models.LookmlModel] = [
-                    self.sdk.lookml_model(model)]
+                    self.sdk.lookml_model(model,fields='name,project_name,explores,has_content')]
             else:
-                ml = self.sdk.all_lookml_models()
+                ml = self.sdk.all_lookml_models(fields='name,project_name,explores,has_content')
         except error.SDKError:
             raise exceptions.NotFoundError("An error occured while getting models.")
         else:
@@ -144,7 +144,8 @@ class Fetcher:
         """Returns a list of explores."""
         try:
             if model and explore:
-                explores = [self.sdk.lookml_model_explore(model, explore)]
+                explores = [self.sdk.lookml_model_explore
+                                    (model, explore,fields='name,model_name,hidden,description,fields,scopes')]
             elif not explore:
                 all_models = self.get_models(model=model)
                 explores = []
@@ -153,7 +154,7 @@ class Fetcher:
                     assert isinstance(m.explores, list)
                     explores.extend(
                         [
-                            self.sdk.lookml_model_explore(m.name, cast(str, e.name))
+                            self.sdk.lookml_model_explore(m.name, cast(str, e.name),fields='name,model_name,hidden,description,fields,scopes')
                             for e in m.explores
                         ]
                     )

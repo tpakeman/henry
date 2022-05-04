@@ -1,4 +1,5 @@
 from typing import cast, Optional, List, Any
+from attr import fields
 
 from looker_sdk.sdk.api40 import models
 from henry.modules import spinner
@@ -31,7 +32,7 @@ class Analyze(fetcher.Fetcher):
             assert isinstance(p.name, str)
             assert isinstance(p.pull_request_mode, models.PullRequestMode)
             assert isinstance(p.validation_required, bool)
-            p_files = self.sdk.all_project_files(p.name)
+            p_files = self.sdk.all_project_files(p.name, fields='id,type')
 
             if "/bare_models/" in cast(str, p.git_remote_url):
                 git_connection_test_results = "Bare repo, no tests required"

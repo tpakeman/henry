@@ -31,7 +31,7 @@ class Pulse(fetcher.Fetcher):
 
         reserved_names = ["looker__internal__analytics", "looker", "looker__ilooker"]
         db_connections: Sequence[models.DBConnection] = list(
-            filter(lambda c: c.name not in reserved_names, self.sdk.all_connections())
+            filter(lambda c: c.name not in reserved_names, self.sdk.all_connections(fields='name,dialect'))
         )
 
         if not db_connections:
